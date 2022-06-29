@@ -1,19 +1,24 @@
 package com.forworkismail.kotlinspringboot.controller
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.forworkismail.kotlinspringboot.model.Bank
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
 
 @SpringBootTest
 @AutoConfigureMockMvc
-internal class BankControllerTest {
+internal class BankControllerTest @Autowired constructor(
+    val mockMvc: MockMvc,
+    val objectMapper: ObjectMapper
+) {
 
-    @Autowired
-    lateinit var mockMvc: MockMvc
 
     @Test
     fun `should return all banks`() {
@@ -51,5 +56,45 @@ internal class BankControllerTest {
             .andExpect {
                 status { isNotFound() }
             }
+    }
+
+    @Test
+    fun `should add the new bank`() {
+        // given
+        val bank = Bank(accountNumber = "123", trust = 1.1, transactionFee=1)
+
+        // when
+        val performPost = mockMvc.post("/api/banks/") {
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(bank)
+        }
+
+        // then
+        performPost.andDo { print() }
+        .andExpect {
+            status { isCreated() }
+            content { contentType("application/json") }
+            jsonPath("$.accountNumber") { value("123") }
+            jsonPath("$.trust") { value(1.1) }
+            jsonPath("$.transactionFee") { value(1) }
+        }
+    }
+
+    @Test
+    fun `should return BAD REQUEST if the account number is not valid`() {
+        // given
+        val bank = Bank(accountNumber = "123", trust = 1.1, transactionFee=1)
+
+        // when
+        val performPost = mockMvc.post("/api/banks/") {
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(bank)
+        }
+
+        // then
+        performPost.andDo { print() }
+        .andExpect {
+            status { isBadRequest() }
+        }
     }
 }
